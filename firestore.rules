@@ -3,64 +3,78 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper: Check if user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper: Check if user is a superadmin
-    function isSuperAdmin() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
-    }
-
-    // Helper: Check if user is an admin or superadmin
-    function isAdminOrSuper() {
-      return isAuthenticated() && (
+    // Users collection
+    match /users/{userId} {
+      // User can read/write their own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Admin or superadmin can read/write any user document
+      allow read, write: if request.auth != null && (
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
       );
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
-      allow read, write: if isAdminOrSuper();
-    }
-
     // Locations collection
     match /locations/{locationId} {
-      allow read: if isAuthenticated();
-      allow write, delete: if isAdminOrSuper();
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      );
     }
 
     // Incidents collection
     match /incidents/{incidentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated(); // Allow users to increment counts/append report IDs
-      allow delete: if isAdminOrSuper();
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+      allow delete: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      );
     }
 
     // Reports collection
     match /reports/{reportId} {
-      allow create: if isAuthenticated() && (request.resource.data.uid == request.auth.uid || isAdminOrSuper());
-      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdminOrSuper());
-      allow update, delete: if isAdminOrSuper();
+      allow create: if request.auth != null && (request.resource.data.uid == request.auth.uid || (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      ));
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      ));
+      allow update, delete: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      );
     }
 
     // Notifications collection
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdminOrSuper());
-      allow create: if isAuthenticated(); 
-      allow update: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdminOrSuper());
-      allow delete: if isAdminOrSuper();
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      ));
+      allow create: if request.auth != null; 
+      allow update: if request.auth != null && (resource.data.uid == request.auth.uid || (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      ));
+      allow delete: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      );
     }
 
     // Maintenance schedules
     match /schedules/{scheduleId} {
-      allow read: if isAuthenticated();
-      allow write, delete: if isAdminOrSuper();
+      allow read: if request.auth != null;
+      allow write, delete: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      );
     }
   }
 }
