@@ -31,19 +31,24 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-// Seed initial locations if none exist
-const seedLocations = async () => {
-  const locsRef = collection(db, 'locations');
-  const snapshot = await getDocs(locsRef);
-  if (snapshot.empty) {
-    const initialLocs = [
-      "Gachororo", "Highpoint", "Witeithie", "Joyland", 
-      "Gate C", "Sears", "Kalimoni", "Kenyatta Road"
-    ];
-    for (const name of initialLocs) {
-      await addDoc(locsRef, { name, activeIncidents: 0 });
+// Seed initial locations if none exist (only admins/superadmins can write, so skip adding for regular users!)
+const seedLocations = async (isAdmin: boolean = false) => {
+  try {
+    const locsRef = collection(db, 'locations');
+    const snapshot = await getDocs(locsRef);
+    if (snapshot.empty && isAdmin) {
+      const initialLocs = [
+        "Gachororo", "Highpoint", "Witeithie", "Joyland", 
+        "Gate C", "Sears", "Kalimoni", "Kenyatta Road"
+      ];
+      for (const name of initialLocs) {
+        await addDoc(locsRef, { name, activeIncidents: 0 });
+      }
+      console.log("Seeded initial locations");
     }
-    console.log("Seeded initial locations");
+  } catch (err) {
+    // Silently ignore - likely permissions error for regular users
+    console.warn("Skipping location seed (permissions or already seeded)");
   }
 };
 
@@ -177,10 +182,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIncidentsUnsub(() => unsubInc);
           }
 
-          // Seed locations (always attempt to seed, no matter the role!)
-          seedLocations().catch(err => {
-            console.warn("Auto-seeding skipped (likely permissions):", err.message);
-          });
+          // Seed locations (only if admin or superadmin!)
+          seedLocations(isAdminOrSuper);
         } catch (error: any) {
           console.error("AuthContext: Error accessing user profile:", error.message);
           setRole('user');
