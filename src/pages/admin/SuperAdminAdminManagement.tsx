@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { subscribeToAllUsers, type SystemUser, updateUserRole } from '../../services/db';
+import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserRecord } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
-import { User, Shield, Key, XCircle } from 'lucide-react';
+import { User, Shield, Key, XCircle, Plus, X } from 'lucide-react';
 
 export const SuperAdminAdminManagement = () => {
   const [admins, setAdmins] = useState<SystemUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminName, setNewAdminName] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToAllUsers((usersData) => {
@@ -48,12 +52,31 @@ export const SuperAdminAdminManagement = () => {
     }
   };
 
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminEmail) return;
+    
+    setCreating(true);
+    try {
+      await createUserRecord(newAdminEmail, 'admin', newAdminName);
+      alert("Admin record created! The user can now sign up with this email.");
+      setNewAdminEmail('');
+      setNewAdminName('');
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to create admin record.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <h2 style={{ marginBottom: '2rem', color: 'var(--primary-color)' }}>Admin Management</h2>
 
       <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: showCreateForm ? '1rem' : 0 }}>
           <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
             <Shield size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
             <input
@@ -64,7 +87,72 @@ export const SuperAdminAdminManagement = () => {
               style={{ paddingLeft: '3rem' }}
             />
           </div>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            <Plus size={18} />
+            {showCreateForm ? 'Cancel' : 'Add Admin'}
+          </button>
         </div>
+
+        {showCreateForm && (
+          <form onSubmit={handleCreateAdmin} style={{
+            padding: '1.5rem',
+            background: 'var(--color-bg)',
+            borderRadius: '10px',
+            border: '1px solid var(--color-border)'
+          }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem' }}>Create New Admin</h4>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Name</label>
+                <input
+                  className="input-field"
+                  type="text"
+                  placeholder="Full name"
+                  value={newAdminName}
+                  onChange={e => setNewAdminName(e.target.value)}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Email</label>
+                <input
+                  className="input-field"
+                  type="email"
+                  required
+                  placeholder="admin@example.com"
+                  value={newAdminEmail}
+                  onChange={e => setNewAdminEmail(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="submit"
+                  className="btn"
+                  disabled={creating}
+                >
+                  {creating ? 'Creating...' : 'Create Admin'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setNewAdminEmail('');
+                    setNewAdminName('');
+                  }}
+                  style={{ marginLeft: '0.5rem' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.75rem', marginBottom: 0 }}>
+              Note: This creates an admin record in the system. The user will need to sign up using the "Sign In" page with this email to complete their account.
+            </p>
+          </form>
+        )}
       </div>
 
       {loading ? (
@@ -99,8 +187,8 @@ export const SuperAdminAdminManagement = () => {
                         <User size={20} style={{ color: 'var(--primary-color)' }} />
                       </div>
                       <div>
-                        <p style={{ fontWeight: 600, margin: 0 }}>{adminItem.email || 'Unknown Email'}</p>
-                        <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>ID: {adminItem.id}</p>
+                        <p style={{ fontWeight: 600, margin: 0 }}>{adminItem.name || adminItem.email || 'Unknown Admin'}</p>
+                        <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>{adminItem.email || 'ID: ' + adminItem.id}</p>
                       </div>
                     </div>
                   </td>

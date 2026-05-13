@@ -124,6 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             
             let userRole = 'user';
             let userLocation: string | null = null;
+            let userName: string | null = null;
             
             if (!pendingSnapshot.empty) {
               // Use the first pending record
@@ -131,6 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               const pendingData = pendingDoc.data();
               userRole = pendingData.role || 'user';
               userLocation = pendingData.location || null;
+              userName = pendingData.name || null;
               
               // Delete the pending record
               await deleteDoc(doc(db, 'users', pendingDoc.id));
@@ -139,6 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Create the user's permanent record using their UID
             await setDoc(userDocRef, {
               email: firebaseUser.email,
+              name: userName,
               role: userRole,
               location: userLocation,
               createdAt: new Date().toISOString()

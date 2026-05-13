@@ -454,6 +454,7 @@ export const deleteSchedule = async (scheduleId: string) => {
 export interface SystemUser {
   id?: string;
   email?: string;
+  name?: string;
   role: 'user' | 'admin' | 'superadmin';
   location?: string;
   createdAt?: any;
@@ -477,9 +478,10 @@ export const updateUserRole = async (userId: string, role: 'user' | 'admin' | 's
 
 // Note: To create users with createUserWithEmailAndPassword, we need to use the Firebase Admin SDK on a server.
 // For client-side, we can create a Firestore record, but actual auth user creation requires admin privileges.
-export const createUserRecord = async (email: string, role: 'user' | 'admin' = 'user', location?: string) => {
+export const createUserRecord = async (email: string, role: 'user' | 'admin' = 'user', name?: string, location?: string) => {
   await addDoc(collection(db, 'users'), {
     email,
+    name: name || null,
     role,
     location: location || null,
     createdAt: serverTimestamp(),

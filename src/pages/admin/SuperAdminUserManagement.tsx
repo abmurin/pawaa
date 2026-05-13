@@ -10,7 +10,7 @@ export const SuperAdminUserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
+  const [newUserName, setNewUserName] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -59,10 +59,10 @@ export const SuperAdminUserManagement = () => {
     
     setCreating(true);
     try {
-      await createUserRecord(newUserEmail, newUserRole);
+      await createUserRecord(newUserEmail, 'user', newUserName);
       alert("User record created! The user can now sign up with this email.");
       setNewUserEmail('');
-      setNewUserRole('user');
+      setNewUserName('');
       setShowCreateForm(false);
     } catch (error) {
       console.error(error);
@@ -93,7 +93,7 @@ export const SuperAdminUserManagement = () => {
             onClick={() => setShowCreateForm(!showCreateForm)}
           >
             <Plus size={18} />
-            {showCreateForm ? 'Cancel' : 'Add User/Admin'}
+            {showCreateForm ? 'Cancel' : 'Add User'}
           </button>
         </div>
 
@@ -107,6 +107,16 @@ export const SuperAdminUserManagement = () => {
             <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem' }}>Create New User</h4>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Name</label>
+                <input
+                  className="input-field"
+                  type="text"
+                  placeholder="Full name"
+                  value={newUserName}
+                  onChange={e => setNewUserName(e.target.value)}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: '200px' }}>
                 <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Email</label>
                 <input
                   className="input-field"
@@ -116,17 +126,6 @@ export const SuperAdminUserManagement = () => {
                   value={newUserEmail}
                   onChange={e => setNewUserEmail(e.target.value)}
                 />
-              </div>
-              <div style={{ minWidth: '150px' }}>
-                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Role</label>
-                <select
-                  className="input-field"
-                  value={newUserRole}
-                  onChange={e => setNewUserRole(e.target.value as 'user' | 'admin')}
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                 <button
@@ -142,6 +141,7 @@ export const SuperAdminUserManagement = () => {
                   onClick={() => {
                     setShowCreateForm(false);
                     setNewUserEmail('');
+                    setNewUserName('');
                   }}
                   style={{ marginLeft: '0.5rem' }}
                 >
@@ -188,8 +188,8 @@ export const SuperAdminUserManagement = () => {
                         <User size={20} style={{ color: 'var(--primary-color)' }} />
                       </div>
                       <div>
-                        <p style={{ fontWeight: 600, margin: 0 }}>{userItem.email || 'Unknown Email'}</p>
-                        <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>ID: {userItem.id}</p>
+                        <p style={{ fontWeight: 600, margin: 0 }}>{userItem.name || userItem.email || 'Unknown User'}</p>
+                        <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>{userItem.email || 'ID: ' + userItem.id}</p>
                       </div>
                     </div>
                   </td>
