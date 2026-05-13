@@ -15,6 +15,10 @@ export const LocationRequests = () => {
     const unsub = onSnapshot(q, (snapshot) => {
       setChangeRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
+    }, (err) => {
+      console.error("LocationRequests: Error fetching requests:", err);
+      setChangeRequests([]);
+      setLoading(false);
     });
 
     return () => unsub();
@@ -31,8 +35,8 @@ export const LocationRequests = () => {
       });
       alert("Location change approved!");
     } catch (error) {
-      console.error(error);
-      alert("Failed to approve request.");
+      console.error("Failed to approve location change:", error);
+      alert("Failed to approve request. Check permissions!");
     }
   };
 
@@ -46,8 +50,8 @@ export const LocationRequests = () => {
       });
       alert("Request rejected.");
     } catch (error) {
-      console.error(error);
-      alert("Failed to reject request.");
+      console.error("Failed to reject location change:", error);
+      alert("Failed to reject request. Check permissions!");
     }
   };
 
