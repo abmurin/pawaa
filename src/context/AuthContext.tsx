@@ -177,12 +177,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIncidentsUnsub(() => unsubInc);
           }
 
-          // If admin or superadmin, ensure locations are seeded
-          if (isAdminOrSuper) {
-            seedLocations().catch(err => {
-              console.warn("Auto-seeding skipped (likely permissions):", err.message);
-            });
-          }
+          // Seed locations (always attempt to seed, no matter the role!)
+          seedLocations().catch(err => {
+            console.warn("Auto-seeding skipped (likely permissions):", err.message);
+          });
         } catch (error: any) {
           console.error("AuthContext: Error accessing user profile:", error.message);
           setRole('user');
