@@ -38,7 +38,8 @@ export const SuperAdminUserManagement = () => {
   }, []);
 
   const filteredUsers = users.filter(u => {
-    const matches = u.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matches = u.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    u.role?.toLowerCase().includes(searchTerm.toLowerCase());
     return matches;
   });
 
