@@ -1,6 +1,6 @@
 import { 
   collection, addDoc, updateDoc, doc, query, where, orderBy, 
-  onSnapshot, getDocs, writeBatch, serverTimestamp, getDoc, setDoc
+  onSnapshot, getDocs, writeBatch, serverTimestamp, getDoc, setDoc, deleteDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { createUserWithPassword } from './firebase';
