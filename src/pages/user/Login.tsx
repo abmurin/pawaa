@@ -8,6 +8,7 @@ export const Login = () => {
   const navigate = useNavigate();
   const { user, role, loading } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
@@ -35,11 +36,12 @@ export const Login = () => {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+    if (isRegistering && !name) return;
 
     try {
       setAuthLoading(true);
       if (isRegistering) {
-        await registerWithEmail(email, password);
+        await registerWithEmail(email, password, name);
       } else {
         await loginWithEmail(email, password);
       }
@@ -187,6 +189,19 @@ export const Login = () => {
           </p>
 
           <form onSubmit={handleEmailAuth} style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+            {isRegistering && (
+              <div className="input-group">
+                <label className="input-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required 
+                />
+              </div>
+            )}
             <div className="input-group">
               <label className="input-label">Email Address</label>
               <input 

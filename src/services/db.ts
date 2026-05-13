@@ -3,7 +3,7 @@ import {
   onSnapshot, getDocs, writeBatch, serverTimestamp, getDoc, setDoc, deleteDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { createUserWithPassword } from './firebase';
+import { createUserWithPassword, updateProfile } from './firebase';
 
 export type UnifiedStatus = 'reported' | 'acknowledged' | 'in-progress' | 'resolved' | 'false-alarm';
 
@@ -494,6 +494,11 @@ export const createUserRecord = async (email: string, role: 'user' | 'admin' = '
 export const createUserAccount = async (email: string, password: string, role: 'user' | 'admin', name?: string, location?: string) => {
   // First create the auth user
   const user = await createUserWithPassword(email, password);
+  
+  // Update display name in Firebase Auth if name is provided
+  if (name) {
+    await updateProfile(user, { displayName: name });
+  }
   
   // Then create the Firestore record using the user's UID
   await setDoc(doc(db, 'users', user.uid), {

@@ -6,7 +6,8 @@ import {
   signOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  updateProfile
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -54,9 +55,12 @@ export const loginWithEmail = async (email: string, pass: string) => {
   }
 };
 
-export const registerWithEmail = async (email: string, pass: string) => {
+export const registerWithEmail = async (email: string, pass: string, name?: string) => {
   try {
     const result = await createUserWithEmailAndPassword(auth, email, pass);
+    if (name) {
+      await updateProfile(result.user, { displayName: name });
+    }
     return result.user;
   } catch (error) {
     console.error("Error registering with Email", error);
