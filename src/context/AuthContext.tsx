@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { User } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, onSnapshot, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { subscribeToLocations, type Location } from '../services/db';
 
 interface AuthContextType {
   user: User | null;
@@ -12,8 +13,9 @@ interface AuthContextType {
   pendingLocationRequests: number;
   pendingIncidents: number;
   loading: boolean;
+  locations: Location[];
   updateUserLocation: (newLocation: string) => Promise<void>;
-  requestLocationChange: (reason: string) => Promise<void>;
+  requestLocationChange: (newLocation: string, reason: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   pendingLocationRequests: 0,
   pendingIncidents: 0,
   loading: true,
+  locations: [],
   updateUserLocation: async () => {},
   requestLocationChange: async () => {}
 });
@@ -61,9 +64,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [pendingLocationRequests, setPendingLocationRequests] = useState(0);
   const [pendingIncidents, setPendingIncidents] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [notificationUnsub, setNotificationUnsub] = useState<(() => void) | null>(null);
   const [requestsUnsub, setRequestsUnsub] = useState<(() => void) | null>(null);
   const [incidentsUnsub, setIncidentsUnsub] = useState<(() => void) | null>(null);
+  const [locationsUnsub, setLocationsUnsub] = useState<(() => void) | null>(null);
 
   const updateUserLocation = async (newLocation: string) => {
     if (!user) return;
@@ -72,11 +77,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLocation(newLocation);
   };
 
-  const requestLocationChange = async (reason: string) => {
+  const requestLocationChange = async (newLocation: string, reason: string) => {
     if (!user) return;
     const userDocRef = doc(db, 'users', user.uid);
     await setDoc(userDocRef, { 
       locationChangeRequested: true,
+      requestedNewLocation: newLocation,
       locationChangeReason: reason,
       locationChangeTimestamp: new Date().toISOString()
     }, { merge: true });
@@ -86,12 +92,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await addDoc(collection(db, 'notifications'), {
       uid: 'admin', // or a specific admin ID if available
       title: 'Location Change Request',
-      message: `${user.email} has requested to change their location. Reason: ${reason}`,
+      message: `${user.email} has requested to change their location to ${newLocation}. Reason: ${reason}`,
       read: false,
       createdAt: new Date().toISOString(),
       fromUid: user.uid
     });
   };
+
+  // Subscribe to locations for all users!
+  useEffect(() => {
+    const unsub = subscribeToLocations(setLocations);
+    setLocationsUnsub(() => unsub);
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -256,13 +269,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (incidentsUnsub) {
         incidentsUnsub();
       }
+      if (locationsUnsub) {
+        locationsUnsub();
+      }
     };
   }, []);
 
   return (
     <AuthContext.Provider value={{ 
       user, role, location, locationChangeRequested, unreadNotifications, 
-      pendingLocationRequests, pendingIncidents, loading, 
+      pendingLocationRequests, pendingIncidents, loading, locations,
       updateUserLocation, requestLocationChange 
     }}>
       {children}

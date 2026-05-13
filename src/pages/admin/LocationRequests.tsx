@@ -3,7 +3,7 @@ import {
   collection, query, where, onSnapshot, doc, updateDoc 
 } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { MapPin, Check, X, User, Activity, AlertCircle } from 'lucide-react';
+import { MapPin, Check, X, User, Activity, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const LocationRequests = () => {
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
@@ -20,12 +20,13 @@ export const LocationRequests = () => {
     return () => unsub();
   }, []);
 
-  const handleApproveLocation = async (userId: string, newLocation: string) => {
+  const handleApproveLocation = async (userId: string, requestedLocation: string) => {
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
-        location: newLocation,
+        location: requestedLocation,
         locationChangeRequested: false,
+        requestedNewLocation: null,
         locationChangeReason: null
       });
       alert("Location change approved!");
@@ -39,7 +40,9 @@ export const LocationRequests = () => {
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
-        locationChangeRequested: false
+        locationChangeRequested: false,
+        requestedNewLocation: null,
+        locationChangeReason: null
       });
       alert("Request rejected.");
     } catch (error) {
@@ -116,11 +119,17 @@ export const LocationRequests = () => {
                   <p style={{ fontSize: '0.9rem', marginBottom: '0.75rem', lineHeight: 1.5 }}>
                     <span style={{ fontWeight: 600, opacity: 0.9 }}>Reason:</span> {req.locationChangeReason || 'No reason provided'}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.03)', padding: '0.3rem 0.75rem', borderRadius: '6px' }}>
                       <MapPin size={12} />
                       <span>Current: <strong>{req.location || 'Not set'}</strong></span>
                     </div>
+                    {req.requestedNewLocation && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', background: 'rgba(37,99,235,0.1)', padding: '0.3rem 0.75rem', borderRadius: '6px', color: 'var(--primary-color)' }}>
+                        <ArrowRight size={12} />
+                        <span>Requested: <strong>{req.requestedNewLocation}</strong></span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -141,12 +150,10 @@ export const LocationRequests = () => {
                   <X size={20} />
                 </button>
                 <button 
-                  onClick={() => {
-                    const newLoc = prompt("Enter new location for this user:", req.location || "");
-                    if (newLoc) handleApproveLocation(req.id, newLoc);
-                  }}
+                  onClick={() => req.requestedNewLocation && handleApproveLocation(req.id, req.requestedNewLocation)}
                   className="btn btn-primary" 
                   style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  disabled={!req.requestedNewLocation}
                 >
                   <Check size={20} /> Approve Change
                 </button>

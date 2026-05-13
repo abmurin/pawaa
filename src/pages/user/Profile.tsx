@@ -3,20 +3,22 @@ import { useAuth } from '../../context/AuthContext';
 import { useState } from 'react';
 
 export const Profile = () => {
-  const { user, role, location, locationChangeRequested, requestLocationChange } = useAuth();
+  const { user, role, location, locationChangeRequested, requestLocationChange, locations } = useAuth();
   const [reason, setReason] = useState('');
+  const [selectedNewLocation, setSelectedNewLocation] = useState('');
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) return;
+    if (!reason.trim() || !selectedNewLocation.trim()) return;
     
     setSubmitting(true);
     try {
-      await requestLocationChange(reason);
+      await requestLocationChange(selectedNewLocation, reason);
       setShowRequestModal(false);
       setReason('');
+      setSelectedNewLocation('');
       alert("Request submitted successfully. An admin will review it.");
     } catch (error) {
       console.error("Failed to submit request:", error);
@@ -182,13 +184,28 @@ export const Profile = () => {
           zIndex: 1000,
           padding: '1rem'
         }}>
-          <div className="glass-panel animate-scale-in" style={{ maxWidth: '400px', width: '100%', padding: '2rem' }}>
+          <div className="glass-panel animate-scale-in" style={{ maxWidth: '450px', width: '100%', padding: '2rem' }}>
             <h3 style={{ marginBottom: '1rem' }}>Request Location Change</h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
-              Please provide a reason for changing your location (e.g., "I moved to Gachororo"). An admin will review your request.
+              Please select your new location and provide a reason. An admin will review your request.
             </p>
             
             <form onSubmit={handleRequest}>
+              <div className="input-group" style={{ marginBottom: '1rem' }}>
+                <label className="input-label">New Location</label>
+                <select 
+                  className="input-field"
+                  value={selectedNewLocation}
+                  onChange={(e) => setSelectedNewLocation(e.target.value)}
+                  required
+                >
+                  <option value="">Select a location...</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                  ))}
+                </select>
+              </div>
+              
               <div className="input-group">
                 <label className="input-label">Reason for change</label>
                 <textarea 
