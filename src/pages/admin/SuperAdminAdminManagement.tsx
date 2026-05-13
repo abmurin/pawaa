@@ -9,6 +9,7 @@ export const SuperAdminAdminManagement = () => {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -23,6 +24,10 @@ export const SuperAdminAdminManagement = () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(field);
+      if (field === 'all') {
+        setShowCopiedToast(true);
+        setTimeout(() => setShowCopiedToast(false), 2000);
+      }
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
@@ -232,6 +237,29 @@ export const SuperAdminAdminManagement = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Copied Toast */}
+      {showCopiedToast && (
+        <div style={{
+          position: 'fixed',
+          bottom: '2rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#10b981',
+          color: 'white',
+          padding: '1rem 2rem',
+          borderRadius: '10px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <Check size={20} />
+          Copied!
         </div>
       )}
 
