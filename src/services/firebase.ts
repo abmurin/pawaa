@@ -86,7 +86,6 @@ export const resetPassword = async (email: string) => {
   }
 };
 
-// Create user with password without affecting current logged-in user
 export const createUserWithPassword = async (email: string, password: string) => {
   try {
     const result = await createUserWithEmailAndPassword(authForUserCreation, email, password);
@@ -98,3 +97,5 @@ export const createUserWithPassword = async (email: string, password: string) =>
     throw error;
   }
 };
+
+export { updateProfile };
