@@ -161,6 +161,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const q = query(collection(db, 'notifications'), where('uid', '==', firebaseUser.uid), where('read', '==', false));
           const unsubNotifs = onSnapshot(q, (snapshot) => {
             setUnreadNotifications(snapshot.size);
+          }, (err) => {
+            console.warn("AuthContext: Notifications snapshot error (likely permissions)", err);
+            setUnreadNotifications(0);
           });
           setNotificationUnsub(() => unsubNotifs);
 
@@ -171,6 +174,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const reqQ = query(collection(db, 'users'), where('locationChangeRequested', '==', true));
             const unsubReqs = onSnapshot(reqQ, (snapshot) => {
               setPendingLocationRequests(snapshot.size);
+            }, (err) => {
+              console.warn("AuthContext: Pending requests snapshot error", err);
+              setPendingLocationRequests(0);
             });
             setRequestsUnsub(() => unsubReqs);
 
@@ -178,6 +184,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const incQ = query(collection(db, 'incidents'), where('status', '==', 'reported'));
             const unsubInc = onSnapshot(incQ, (snapshot) => {
               setPendingIncidents(snapshot.size);
+            }, (err) => {
+              console.warn("AuthContext: Incidents snapshot error", err);
+              setPendingIncidents(0);
             });
             setIncidentsUnsub(() => unsubInc);
           }
