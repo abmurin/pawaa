@@ -482,7 +482,8 @@ export const createUserRecord = async (email: string, role: 'user' | 'admin' = '
     email,
     role,
     location: location || null,
-    createdAt: serverTimestamp()
+    createdAt: serverTimestamp(),
+    pending: true // Mark as pending until user signs up
   });
 };
 

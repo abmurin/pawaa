@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { subscribeToAllUsers, type SystemUser, updateUserRole } from '../../services/db';
+import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserRecord } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
-import { User, Shield, Key, Edit2 } from 'lucide-react';
+import { User, Shield, Key, Edit2, Plus, X } from 'lucide-react';
 
 export const SuperAdminUserManagement = () => {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'user' | 'admin'>('user');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const unsubscribe = subscribeToAllUsers((usersData) => {
@@ -49,12 +53,31 @@ export const SuperAdminUserManagement = () => {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserEmail) return;
+    
+    setCreating(true);
+    try {
+      await createUserRecord(newUserEmail, newUserRole);
+      alert("User record created! The user can now sign up with this email.");
+      setNewUserEmail('');
+      setNewUserRole('user');
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to create user record.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in">
       <h2 style={{ marginBottom: '2rem', color: 'var(--primary-color)' }}>User Management</h2>
 
       <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: showCreateForm ? '1rem' : 0 }}>
           <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
             <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
             <input
@@ -65,7 +88,72 @@ export const SuperAdminUserManagement = () => {
               style={{ paddingLeft: '3rem' }}
             />
           </div>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            <Plus size={18} />
+            {showCreateForm ? 'Cancel' : 'Add User/Admin'}
+          </button>
         </div>
+
+        {showCreateForm && (
+          <form onSubmit={handleCreateUser} style={{
+            padding: '1.5rem',
+            background: 'var(--color-bg)',
+            borderRadius: '10px',
+            border: '1px solid var(--color-border)'
+          }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem' }}>Create New User</h4>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Email</label>
+                <input
+                  className="input-field"
+                  type="email"
+                  required
+                  placeholder="user@example.com"
+                  value={newUserEmail}
+                  onChange={e => setNewUserEmail(e.target.value)}
+                />
+              </div>
+              <div style={{ minWidth: '150px' }}>
+                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Role</label>
+                <select
+                  className="input-field"
+                  value={newUserRole}
+                  onChange={e => setNewUserRole(e.target.value as 'user' | 'admin')}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="submit"
+                  className="btn"
+                  disabled={creating}
+                >
+                  {creating ? 'Creating...' : 'Create User'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setNewUserEmail('');
+                  }}
+                  style={{ marginLeft: '0.5rem' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.75rem', marginBottom: 0 }}>
+              Note: This creates a user record in the system. The user will need to sign up using the "Sign In" page with this email to complete their account.
+            </p>
+          </form>
+        )}
       </div>
 
       {loading ? (

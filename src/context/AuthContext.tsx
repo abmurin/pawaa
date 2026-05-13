@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, addDoc, query, where, onSnapshot, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 
 interface AuthContextType {
@@ -118,15 +118,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLocation(data.location || null);
             setLocationChangeRequested(!!data.locationChangeRequested);
           } else {
-            // Create a new user record with default 'user' role
+            // Check if there's a pending user record for this email
+            const pendingQuery = query(collection(db, 'users'), where('email', '==', firebaseUser.email), where('pending', '==', true));
+            const pendingSnapshot = await getDocs(pendingQuery);
+            
+            let userRole = 'user';
+            let userLocation: string | null = null;
+            
+            if (!pendingSnapshot.empty) {
+              // Use the first pending record
+              const pendingDoc = pendingSnapshot.docs[0];
+              const pendingData = pendingDoc.data();
+              userRole = pendingData.role || 'user';
+              userLocation = pendingData.location || null;
+              
+              // Delete the pending record
+              await deleteDoc(doc(db, 'users', pendingDoc.id));
+            }
+
+            // Create the user's permanent record using their UID
             await setDoc(userDocRef, {
               email: firebaseUser.email,
-              role: 'user',
-              location: null,
+              role: userRole,
+              location: userLocation,
               createdAt: new Date().toISOString()
             });
-            setRole('user');
-            setLocation(null);
+            
+            setRole(userRole as 'user' | 'admin' | 'superadmin');
+            setLocation(userLocation);
             setLocationChangeRequested(false);
           }
 
