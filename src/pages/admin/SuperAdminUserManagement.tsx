@@ -39,7 +39,7 @@ export const SuperAdminUserManagement = () => {
 
   const filteredUsers = users.filter(u => {
     const matches = u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matches && u.role === 'user';
+    return matches;
   });
 
   const handleResetPassword = async (email: string) => {
