@@ -22,7 +22,7 @@ export const AdminSettings = () => {
       if (!user) return;
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        setDbAdminVerified(userDoc.exists() && userDoc.data()?.role === 'admin');
+        setDbAdminVerified(userDoc.exists() && ['admin', 'superadmin'].includes(userDoc.data()?.role as string));
       } catch (e) {
         setDbAdminVerified(false);
       }
@@ -46,7 +46,7 @@ export const AdminSettings = () => {
         setAnalyticsLoading(false);
       }
     };
-    if (dbAdminVerified) {
+    if (dbAdminVerified !== null) {
       fetchReports();
     }
   }, [dbAdminVerified]);
