@@ -31,6 +31,7 @@ export const SuperAdminUserManagement = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToAllUsers((usersData) => {
+      console.log("SuperAdminUserManagement: Received users:", usersData);
       setUsers(usersData);
       setLoading(false);
     });

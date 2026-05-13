@@ -462,13 +462,15 @@ export interface SystemUser {
 }
 
 export const subscribeToAllUsers = (callback: (users: SystemUser[]) => void) => {
-  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+  const q = collection(db, 'users'); // Remove orderBy to avoid missing index for now
   return onSnapshot(q, (snapshot) => {
     const users = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     } as SystemUser));
     callback(users);
+  }, (err) => {
+    console.error("db: subscribeToAllUsers error:", err);
   });
 };
 
