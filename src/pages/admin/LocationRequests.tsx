@@ -1,15 +1,34 @@
 import { useState, useEffect } from 'react';
 import { 
-  collection, query, where, onSnapshot, doc, updateDoc 
+  collection, query, where, onSnapshot, doc, updateDoc, getDoc
 } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { db, auth } from '../../services/firebase';
 import { MapPin, Check, X, User, Activity, AlertCircle, ArrowRight } from 'lucide-react';
 
 export const LocationRequests = () => {
   const [changeRequests, setChangeRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
+    // First check current user's role!
+    const checkCurrentUserRole = async () => {
+      if (!auth.currentUser) return;
+      
+      try {
+        const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          console.log("LocationRequests: Current user role:", data.role);
+          setCurrentUserRole(data.role);
+        }
+      } catch (err) {
+        console.error("LocationRequests: Failed to check current user role:", err);
+      }
+    };
+    
+    checkCurrentUserRole();
+    
     // Subscribe to location change requests
     const q = query(collection(db, 'users'), where('locationChangeRequested', '==', true));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -25,6 +44,10 @@ export const LocationRequests = () => {
   }, []);
 
   const handleApproveLocation = async (userId: string, requestedLocation: string) => {
+    console.log("LocationRequests: Approving location change for user:", userId);
+    console.log("LocationRequests: Requested location:", requestedLocation);
+    console.log("LocationRequests: Current user role:", currentUserRole);
+    
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
@@ -34,13 +57,17 @@ export const LocationRequests = () => {
         locationChangeReason: null
       });
       alert("Location change approved!");
-    } catch (error) {
-      console.error("Failed to approve location change:", error);
+    } catch (error: any) {
+      console.error("LocationRequests: Failed to approve location change:", error);
+      console.error("LocationRequests: Error code:", error.code);
       alert("Failed to approve request. Check permissions!");
     }
   };
 
   const handleRejectLocation = async (userId: string) => {
+    console.log("LocationRequests: Rejecting location change for user:", userId);
+    console.log("LocationRequests: Current user role:", currentUserRole);
+    
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
@@ -49,8 +76,9 @@ export const LocationRequests = () => {
         locationChangeReason: null
       });
       alert("Request rejected.");
-    } catch (error) {
-      console.error("Failed to reject location change:", error);
+    } catch (error: any) {
+      console.error("LocationRequests: Failed to reject location change:", error);
+      console.error("LocationRequests: Error code:", error.code);
       alert("Failed to reject request. Check permissions!");
     }
   };
