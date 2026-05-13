@@ -1,19 +1,33 @@
 import { useState, useEffect } from 'react';
 import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount, deleteUser } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
-import { User, Shield, Key, XCircle, Plus, X, Trash2 } from 'lucide-react';
+import { User, Shield, Key, Plus, X, Trash2, Copy, Check, Settings } from 'lucide-react';
 
 export const SuperAdminAdminManagement = () => {
   const [admins, setAdmins] = useState<SystemUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminName, setNewAdminName] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showCredentials, setShowCredentials] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState<'user' | 'admin' | 'superadmin'>('admin');
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeToAllUsers((usersData) => {
@@ -40,25 +54,26 @@ export const SuperAdminAdminManagement = () => {
     }
   };
 
-  const handleRemoveAdmin = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove admin privileges from this user?")) return;
+  const handleUpdateRole = async (userId: string, newRole: 'user' | 'admin' | 'superadmin') => {
     setUpdatingId(userId);
     try {
-      await updateUserRole(userId, 'user');
-      alert("Admin privileges removed!");
+      await updateUserRole(userId, newRole);
+      alert("User role updated successfully!");
     } catch (error) {
       console.error(error);
-      alert("Failed to remove admin privileges.");
+      alert("Failed to update user role.");
     } finally {
       setUpdatingId(null);
+      setEditingUserId(null);
     }
   };
 
-  const handleDeleteAdmin = async (userId: string) => {
-    if (!confirm("WARNING: This will delete this admin from the system. Do you want to continue?")) return;
-    setDeletingId(userId);
+  const handleDeleteAdmin = async (adminItem: SystemUser) => {
+    const confirmMessage = `Are you sure you want to delete ${adminItem.name || adminItem.email}? This will remove them from the system.`;
+    if (!confirm(confirmMessage)) return;
+    setDeletingId(adminItem.id!);
     try {
-      await deleteUser(userId);
+      await deleteUser(adminItem.id!);
       alert("Admin deleted successfully! Note: To delete from Firebase Auth, use Firebase Console.");
     } catch (error) {
       console.error(error);
@@ -75,7 +90,11 @@ export const SuperAdminAdminManagement = () => {
     setCreating(true);
     try {
       await createUserAccount(newAdminEmail, newAdminPassword, 'admin', newAdminName);
-      alert("Admin account created successfully!");
+      setShowCredentials({
+        name: newAdminName || 'Admin',
+        email: newAdminEmail,
+        password: newAdminPassword
+      });
       setNewAdminEmail('');
       setNewAdminName('');
       setNewAdminPassword('');
@@ -91,6 +110,130 @@ export const SuperAdminAdminManagement = () => {
   return (
     <div className="animate-fade-in">
       <h2 style={{ marginBottom: '2rem', color: 'var(--primary-color)' }}>Admin Management</h2>
+
+      {/* Credentials Modal */}
+      {showCredentials && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="glass-panel" style={{ 
+            maxWidth: '500px', 
+            width: '100%', 
+            padding: '2rem',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem auto'
+              }}>
+                <Check size={32} style={{ color: '#10b981' }} />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>Admin Created Successfully!</h3>
+              <p style={{ margin: 0, opacity: 0.7, fontSize: '0.9rem' }}>Share these credentials with the admin</p>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{
+                background: 'var(--color-bg)',
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0 0 0.25rem 0' }}>Name</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{showCredentials.name}</p>
+                  </div>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => copyToClipboard(showCredentials.name, 'name')}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    {copiedField === 'name' ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+              
+              <div style={{
+                background: 'var(--color-bg)',
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0 0 0.25rem 0' }}>Email</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{showCredentials.email}</p>
+                  </div>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => copyToClipboard(showCredentials.email, 'email')}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    {copiedField === 'email' ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+              
+              <div style={{
+                background: 'var(--color-bg)',
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0 0 0.25rem 0' }}>Password</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontFamily: 'monospace' }}>{showCredentials.password}</p>
+                  </div>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => copyToClipboard(showCredentials.password, 'password')}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    {copiedField === 'password' ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowCredentials(null)}
+                style={{ flex: 1 }}
+              >
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const message = `Admin Login Credentials for Pawaa:\nName: ${showCredentials.name}\nEmail: ${showCredentials.email}\nPassword: ${showCredentials.password}`;
+                  copyToClipboard(message, 'all');
+                }}
+                style={{ flex: 1 }}
+              >
+                <Copy size={18} />
+                Copy All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: showCreateForm ? '1rem' : 0 }}>
@@ -193,13 +336,15 @@ export const SuperAdminAdminManagement = () => {
             <thead>
               <tr style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface-hover)' }}>
                 <th style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Admin</th>
-                <th style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Role</th>
                 <th style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredAdmins.map((adminItem) => (
-                <tr key={adminItem.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <tr key={adminItem.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-surface-hover)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                >
                   <td style={{ padding: '1rem 1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ 
@@ -215,17 +360,27 @@ export const SuperAdminAdminManagement = () => {
                       </div>
                       <div>
                         <p style={{ fontWeight: 600, margin: 0 }}>{adminItem.name || adminItem.email || 'Unknown Admin'}</p>
-                        <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>{adminItem.email || 'ID: ' + adminItem.id}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>{adminItem.email || 'ID: ' + adminItem.id}</p>
+                          {adminItem.email && (
+                            <button
+                              onClick={() => copyToClipboard(adminItem.email, `email-${adminItem.id}`)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '0.25rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                color: 'var(--color-text-muted)'
+                              }}
+                            >
+                              {copiedField === `email-${adminItem.id}` ? <Check size={14} /> : <Copy size={14} />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </td>
-                  <td style={{ padding: '1rem 1.5rem' }}>
-                    <span className="status-badge" style={{
-                      background: 'rgba(37, 99, 235, 0.1)',
-                      color: 'var(--primary-color)'
-                    }}>
-                      Admin
-                    </span>
                   </td>
                   <td style={{ padding: '1rem 1.5rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -238,23 +393,58 @@ export const SuperAdminAdminManagement = () => {
                         <Key size={16} />
                         Reset Password
                       </button>
+                      
+                      {editingUserId === adminItem.id ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <select
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value as 'user' | 'admin' | 'superadmin')}
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '6px',
+                              border: '1px solid var(--color-border)',
+                              background: 'var(--color-surface)',
+                              color: 'inherit',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                            <option value="superadmin">Super Admin</option>
+                          </select>
+                          <button
+                            className="btn"
+                            onClick={() => handleUpdateRole(adminItem.id!, editRole)}
+                            disabled={updatingId === adminItem.id}
+                            style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+                          >
+                            {updatingId === adminItem.id ? 'Updating...' : 'Save'}
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => setEditingUserId(null)}
+                            style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className="btn btn-outline"
+                          onClick={() => {
+                            setEditingUserId(adminItem.id!);
+                            setEditRole(adminItem.role);
+                          }}
+                          style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+                        >
+                          <Settings size={16} />
+                          Edit Role
+                        </button>
+                      )}
+                      
                       <button
                         className="btn btn-outline"
-                        onClick={() => handleRemoveAdmin(adminItem.id!)}
-                        disabled={updatingId === adminItem.id}
-                        style={{ 
-                          padding: '0.5rem 0.75rem', 
-                          fontSize: '0.8rem',
-                          borderColor: 'var(--color-text-muted)',
-                          color: 'var(--color-text-muted)'
-                        }}
-                      >
-                        <XCircle size={16} />
-                        {updatingId === adminItem.id ? 'Removing...' : 'Remove Admin'}
-                      </button>
-                      <button
-                        className="btn btn-outline"
-                        onClick={() => handleDeleteAdmin(adminItem.id!)}
+                        onClick={() => handleDeleteAdmin(adminItem)}
                         disabled={deletingId === adminItem.id}
                         style={{ 
                           padding: '0.5rem 0.75rem', 

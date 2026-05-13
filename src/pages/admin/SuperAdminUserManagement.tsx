@@ -1,19 +1,33 @@
 import { useState, useEffect } from 'react';
 import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount, deleteUser } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
-import { User, Shield, Key, Edit2, Plus, X, Trash2 } from 'lucide-react';
+import { User, Shield, Key, Edit2, Plus, X, Trash2, Copy, Check, Settings } from 'lucide-react';
 
 export const SuperAdminUserManagement = () => {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showCredentials, setShowCredentials] = useState<{ name: string; email: string; password: string } | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState<'user' | 'admin' | 'superadmin'>('user');
+
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = subscribeToAllUsers((usersData) => {
@@ -42,7 +56,7 @@ export const SuperAdminUserManagement = () => {
     }
   };
 
-  const handleUpdateRole = async (userId: string, newRole: 'user' | 'admin') => {
+  const handleUpdateRole = async (userId: string, newRole: 'user' | 'admin' | 'superadmin') => {
     setUpdatingId(userId);
     try {
       await updateUserRole(userId, newRole);
@@ -52,14 +66,16 @@ export const SuperAdminUserManagement = () => {
       alert("Failed to update user role.");
     } finally {
       setUpdatingId(null);
+      setEditingUserId(null);
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("WARNING: This will delete this user from the system. Do you want to continue?")) return;
-    setDeletingId(userId);
+  const handleDeleteUser = async (userItem: SystemUser) => {
+    const confirmMessage = `Are you sure you want to delete ${userItem.name || userItem.email}? This will remove them from the system.`;
+    if (!confirm(confirmMessage)) return;
+    setDeletingId(userItem.id!);
     try {
-      await deleteUser(userId);
+      await deleteUser(userItem.id!);
       alert("User deleted successfully! Note: To delete from Firebase Auth, use Firebase Console.");
     } catch (error) {
       console.error(error);
@@ -76,7 +92,11 @@ export const SuperAdminUserManagement = () => {
     setCreating(true);
     try {
       await createUserAccount(newUserEmail, newUserPassword, 'user', newUserName);
-      alert("User account created successfully!");
+      setShowCredentials({
+        name: newUserName || 'User',
+        email: newUserEmail,
+        password: newUserPassword
+      });
       setNewUserEmail('');
       setNewUserName('');
       setNewUserPassword('');
@@ -92,6 +112,130 @@ export const SuperAdminUserManagement = () => {
   return (
     <div className="animate-fade-in">
       <h2 style={{ marginBottom: '2rem', color: 'var(--primary-color)' }}>User Management</h2>
+
+      {/* Credentials Modal */}
+      {showCredentials && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div className="glass-panel" style={{ 
+            maxWidth: '500px', 
+            width: '100%', 
+            padding: '2rem',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem auto'
+              }}>
+                <Check size={32} style={{ color: '#10b981' }} />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>User Created Successfully!</h3>
+              <p style={{ margin: 0, opacity: 0.7, fontSize: '0.9rem' }}>Share these credentials with the user</p>
+            </div>
+            
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{
+                background: 'var(--color-bg)',
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0 0 0.25rem 0' }}>Name</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{showCredentials.name}</p>
+                  </div>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => copyToClipboard(showCredentials.name, 'name')}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    {copiedField === 'name' ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+              
+              <div style={{
+                background: 'var(--color-bg)',
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0 0 0.25rem 0' }}>Email</p>
+                    <p style={{ margin: 0, fontWeight: 600 }}>{showCredentials.email}</p>
+                  </div>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => copyToClipboard(showCredentials.email, 'email')}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    {copiedField === 'email' ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+              
+              <div style={{
+                background: 'var(--color-bg)',
+                padding: '1rem',
+                borderRadius: '10px',
+                border: '1px solid var(--color-border)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: '0 0 0.25rem 0' }}>Password</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontFamily: 'monospace' }}>{showCredentials.password}</p>
+                  </div>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => copyToClipboard(showCredentials.password, 'password')}
+                    style={{ padding: '0.5rem', fontSize: '0.8rem' }}
+                  >
+                    {copiedField === 'password' ? <Check size={16} /> : <Copy size={16} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowCredentials(null)}
+                style={{ flex: 1 }}
+              >
+                Close
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const message = `Login Credentials for Pawaa:\nName: ${showCredentials.name}\nEmail: ${showCredentials.email}\nPassword: ${showCredentials.password}`;
+                  copyToClipboard(message, 'all');
+                }}
+                style={{ flex: 1 }}
+              >
+                <Copy size={18} />
+                Copy All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: showCreateForm ? '1rem' : 0 }}>
@@ -200,7 +344,10 @@ export const SuperAdminUserManagement = () => {
             </thead>
             <tbody>
               {filteredUsers.map((userItem) => (
-                <tr key={userItem.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <tr key={userItem.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }}
+                  onMouseOver={(e) => e.currentTarget.style.background = 'var(--color-surface-hover)'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                >
                   <td style={{ padding: '1rem 1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ 
@@ -216,7 +363,25 @@ export const SuperAdminUserManagement = () => {
                       </div>
                       <div>
                         <p style={{ fontWeight: 600, margin: 0 }}>{userItem.name || userItem.email || 'Unknown User'}</p>
-                        <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>{userItem.email || 'ID: ' + userItem.id}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <p style={{ fontSize: '0.75rem', opacity: 0.6, margin: 0 }}>{userItem.email || 'ID: ' + userItem.id}</p>
+                          {userItem.email && (
+                            <button
+                              onClick={() => copyToClipboard(userItem.email, `email-${userItem.id}`)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '0.25rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                color: 'var(--color-text-muted)'
+                              }}
+                            >
+                              {copiedField === `email-${userItem.id}` ? <Check size={14} /> : <Copy size={14} />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -243,35 +408,58 @@ export const SuperAdminUserManagement = () => {
                         <Key size={16} />
                         Reset Password
                       </button>
-                      {userItem.role !== 'admin' ? (
-                        <button
-                          className="btn"
-                          onClick={() => handleUpdateRole(userItem.id!, 'admin')}
-                          disabled={updatingId === userItem.id}
-                          style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
-                        >
-                          <Shield size={16} />
-                          {updatingId === userItem.id ? 'Updating...' : 'Make Admin'}
-                        </button>
+                      
+                      {editingUserId === userItem.id ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <select
+                            value={editRole}
+                            onChange={(e) => setEditRole(e.target.value as 'user' | 'admin' | 'superadmin')}
+                            style={{
+                              padding: '0.5rem 0.75rem',
+                              borderRadius: '6px',
+                              border: '1px solid var(--color-border)',
+                              background: 'var(--color-surface)',
+                              color: 'inherit',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                            <option value="superadmin">Super Admin</option>
+                          </select>
+                          <button
+                            className="btn"
+                            onClick={() => handleUpdateRole(userItem.id!, editRole)}
+                            disabled={updatingId === userItem.id}
+                            style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+                          >
+                            {updatingId === userItem.id ? 'Updating...' : 'Save'}
+                          </button>
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => setEditingUserId(null)}
+                            style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
                       ) : (
                         <button
                           className="btn btn-outline"
-                          onClick={() => handleUpdateRole(userItem.id!, 'user')}
-                          disabled={updatingId === userItem.id}
-                          style={{ 
-                            padding: '0.5rem 0.75rem', 
-                            fontSize: '0.8rem',
-                            borderColor: 'var(--color-text-muted)',
-                            color: 'var(--color-text-muted)'
+                          onClick={() => {
+                            setEditingUserId(userItem.id!);
+                            setEditRole(userItem.role);
                           }}
+                          style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
                         >
-                          <Edit2 size={16} />
-                          {updatingId === userItem.id ? 'Updating...' : 'Remove Admin'}
+                          <Settings size={16} />
+                          Edit Role
                         </button>
                       )}
+                      
                       <button
                         className="btn btn-outline"
-                        onClick={() => handleDeleteUser(userItem.id!)}
+                        onClick={() => handleDeleteUser(userItem)}
                         disabled={deletingId === userItem.id}
                         style={{ 
                           padding: '0.5rem 0.75rem', 
