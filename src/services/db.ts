@@ -507,6 +507,11 @@ export const createUserAccount = async (email: string, password: string, role: '
   return user;
 };
 
+// Delete user from Firestore (note: deleting from Firebase Auth requires Admin SDK or Console)
+export const deleteUser = async (userId: string) => {
+  await deleteDoc(doc(db, 'users', userId));
+};
+
 export const checkActiveMaintenance = async (location: string) => {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());

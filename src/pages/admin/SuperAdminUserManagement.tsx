@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount } from '../../services/db';
+import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount, deleteUser } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
-import { User, Shield, Key, Edit2, Plus, X } from 'lucide-react';
+import { User, Shield, Key, Edit2, Plus, X, Trash2 } from 'lucide-react';
 
 export const SuperAdminUserManagement = () => {
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -51,6 +52,20 @@ export const SuperAdminUserManagement = () => {
       alert("Failed to update user role.");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("WARNING: This will delete this user from the system. Do you want to continue?")) return;
+    setDeletingId(userId);
+    try {
+      await deleteUser(userId);
+      alert("User deleted successfully! Note: To delete from Firebase Auth, use Firebase Console.");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete user.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -254,6 +269,20 @@ export const SuperAdminUserManagement = () => {
                           {updatingId === userItem.id ? 'Updating...' : 'Remove Admin'}
                         </button>
                       )}
+                      <button
+                        className="btn btn-outline"
+                        onClick={() => handleDeleteUser(userItem.id!)}
+                        disabled={deletingId === userItem.id}
+                        style={{ 
+                          padding: '0.5rem 0.75rem', 
+                          fontSize: '0.8rem',
+                          borderColor: 'var(--color-error)',
+                          color: 'var(--color-error)'
+                        }}
+                      >
+                        <Trash2 size={16} />
+                        {deletingId === userItem.id ? 'Deleting...' : 'Delete'}
+                      </button>
                     </div>
                   </td>
                 </tr>

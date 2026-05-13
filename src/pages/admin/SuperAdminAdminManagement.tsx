@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount } from '../../services/db';
+import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount, deleteUser } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
-import { User, Shield, Key, XCircle, Plus, X } from 'lucide-react';
+import { User, Shield, Key, XCircle, Plus, X, Trash2 } from 'lucide-react';
 
 export const SuperAdminAdminManagement = () => {
   const [admins, setAdmins] = useState<SystemUser[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState('');
@@ -50,6 +51,20 @@ export const SuperAdminAdminManagement = () => {
       alert("Failed to remove admin privileges.");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleDeleteAdmin = async (userId: string) => {
+    if (!confirm("WARNING: This will delete this admin from the system. Do you want to continue?")) return;
+    setDeletingId(userId);
+    try {
+      await deleteUser(userId);
+      alert("Admin deleted successfully! Note: To delete from Firebase Auth, use Firebase Console.");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete admin.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -230,12 +245,26 @@ export const SuperAdminAdminManagement = () => {
                         style={{ 
                           padding: '0.5rem 0.75rem', 
                           fontSize: '0.8rem',
-                          borderColor: 'var(--color-error)',
-                          color: 'var(--color-error)'
+                          borderColor: 'var(--color-text-muted)',
+                          color: 'var(--color-text-muted)'
                         }}
                       >
                         <XCircle size={16} />
                         {updatingId === adminItem.id ? 'Removing...' : 'Remove Admin'}
+                      </button>
+                      <button
+                        className="btn btn-outline"
+                        onClick={() => handleDeleteAdmin(adminItem.id!)}
+                        disabled={deletingId === adminItem.id}
+                        style={{ 
+                          padding: '0.5rem 0.75rem', 
+                          fontSize: '0.8rem',
+                          borderColor: 'var(--color-error)',
+                          color: 'var(--color-error)'
+                        }}
+                      >
+                        <Trash2 size={16} />
+                        {deletingId === adminItem.id ? 'Deleting...' : 'Delete'}
                       </button>
                     </div>
                   </td>
