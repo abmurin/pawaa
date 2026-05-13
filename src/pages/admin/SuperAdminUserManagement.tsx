@@ -60,7 +60,10 @@ export const SuperAdminUserManagement = () => {
     setCreating(true);
     try {
       await createUserRecord(newUserEmail, 'user', newUserName);
-      alert("User record created! The user can now sign up with this email.");
+      if (confirm("User record created! Send password reset email now?")) {
+        await resetPassword(newUserEmail);
+        alert("Password reset email sent!");
+      }
       setNewUserEmail('');
       setNewUserName('');
       setShowCreateForm(false);
