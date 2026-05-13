@@ -5,7 +5,7 @@ import { auth, db } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
-  role: 'user' | 'admin' | null;
+  role: 'user' | 'admin' | 'superadmin' | null;
   location: string | null;
   locationChangeRequested: boolean;
   unreadNotifications: number;
@@ -49,7 +49,7 @@ const seedLocations = async () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<'user' | 'admin' | null>(null);
+  const [role, setRole] = useState<'user' | 'admin' | 'superadmin' | null>(null);
   const [location, setLocation] = useState<string | null>(null);
   const [locationChangeRequested, setLocationChangeRequested] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setRole(data.role as 'user' | 'admin');
+            setRole(data.role as 'user' | 'admin' | 'superadmin');
             setLocation(data.location || null);
             setLocationChangeRequested(!!data.locationChangeRequested);
           } else {
@@ -137,9 +137,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           });
           setNotificationUnsub(() => unsubNotifs);
 
-          // If admin, subscribe to pending requests and incidents
-          const isAdmin = firebaseUser.email === 'admin@admin.com' || (userDoc.exists() && userDoc.data().role === 'admin');
-          if (isAdmin) {
+          // If admin or superadmin, subscribe to pending requests and incidents
+          const isAdminOrSuper = ['admin', 'superadmin'].includes(userDoc.exists() ? userDoc.data().role : 'user');
+          if (isAdminOrSuper) {
             // Subscribe to pending location change requests
             const reqQ = query(collection(db, 'users'), where('locationChangeRequested', '==', true));
             const unsubReqs = onSnapshot(reqQ, (snapshot) => {
@@ -155,8 +155,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIncidentsUnsub(() => unsubInc);
           }
 
-          // If admin, ensure locations are seeded
-          if (isAdmin) {
+          // If admin or superadmin, ensure locations are seeded
+          if (isAdminOrSuper) {
             seedLocations().catch(err => {
               console.warn("Auto-seeding skipped (likely permissions):", err.message);
             });

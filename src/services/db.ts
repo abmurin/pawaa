@@ -450,6 +450,42 @@ export const deleteSchedule = async (scheduleId: string) => {
   // await deleteDoc(docRef); 
 };
 
+// --- User Management (for SuperAdmin) ---
+export interface SystemUser {
+  id?: string;
+  email?: string;
+  role: 'user' | 'admin' | 'superadmin';
+  location?: string;
+  createdAt?: any;
+}
+
+export const subscribeToAllUsers = (callback: (users: SystemUser[]) => void) => {
+  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const users = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as SystemUser));
+    callback(users);
+  });
+};
+
+export const updateUserRole = async (userId: string, role: 'user' | 'admin' | 'superadmin') => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, { role });
+};
+
+// Note: To create users with createUserWithEmailAndPassword, we need to use the Firebase Admin SDK on a server.
+// For client-side, we can create a Firestore record, but actual auth user creation requires admin privileges.
+export const createUserRecord = async (email: string, role: 'user' | 'admin' = 'user', location?: string) => {
+  await addDoc(collection(db, 'users'), {
+    email,
+    role,
+    location: location || null,
+    createdAt: serverTimestamp()
+  });
+};
+
 export const checkActiveMaintenance = async (location: string) => {
   const now = new Date();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());

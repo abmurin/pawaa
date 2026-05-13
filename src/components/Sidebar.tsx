@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   FileText, Zap, Calendar, Bell, User, LayoutDashboard, 
-  MapPin, Settings, AlertTriangle, ClipboardList, LogOut 
+  MapPin, Settings, AlertTriangle, ClipboardList, LogOut,
+  Users, Shield
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { logoutUser } from '../services/firebase';
@@ -24,6 +25,18 @@ const adminNavItems = [
   { to: '/admin/settings',   icon: Settings,        label: 'Settings'        },
 ];
 
+const superAdminNavItems = [
+  { to: '/admin',            icon: LayoutDashboard, label: 'Admin Dashboard' },
+  { to: '/admin/incidents',  icon: AlertTriangle,   label: 'Incidents',       hasBadge: 'incidents' },
+  { to: '/admin/tickets',    icon: ClipboardList,   label: 'All Tickets'     },
+  { to: '/admin/locations',  icon: MapPin,          label: 'Locations'       },
+  { to: '/admin/schedule',   icon: Calendar,        label: 'Maintenance'     },
+  { to: '/admin/requests',   icon: User,            label: 'User Requests',   hasBadge: 'requests' },
+  { to: '/admin/settings',   icon: Settings,        label: 'Settings'        },
+  { to: '/admin/users',      icon: Users,           label: 'User Mgt'        },
+  { to: '/admin/admins',     icon: Shield,          label: 'Admin Mgt'       },
+];
+
 export const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }) => {
   const { 
     role, 
@@ -32,7 +45,14 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean, onClose?: () =>
     pendingLocationRequests 
   } = useAuth();
   const navigate = useNavigate();
-  const navItems = role === 'admin' ? adminNavItems : userNavItems;
+  let navItems;
+  if (role === 'superadmin') {
+    navItems = superAdminNavItems;
+  } else if (role === 'admin') {
+    navItems = adminNavItems;
+  } else {
+    navItems = userNavItems;
+  }
 
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to sign out?")) {

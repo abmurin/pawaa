@@ -5,7 +5,8 @@ import {
   signInWithPopup, 
   signOut,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -65,6 +66,15 @@ export const logoutUser = async () => {
     await signOut(auth);
   } catch (error) {
     console.error("Error signing out", error);
+    throw error;
+  }
+};
+
+export const resetPassword = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    console.error("Error resetting password", error);
     throw error;
   }
 };

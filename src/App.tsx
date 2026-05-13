@@ -23,6 +23,8 @@ import { AdminLocations } from './pages/admin/Locations';
 import { AdminSchedule } from './pages/admin/Schedule';
 import { AdminSettings } from './pages/admin/Settings';
 import { LocationRequests } from './pages/admin/LocationRequests';
+import { SuperAdminUserManagement } from './pages/admin/SuperAdminUserManagement';
+import { SuperAdminAdminManagement } from './pages/admin/SuperAdminAdminManagement';
 
 const Home = () => {
   const { user, role } = useAuth();
@@ -60,7 +62,7 @@ const Home = () => {
           <Navbar isOverlay={true} />
 
           <Link 
-            to={user ? (role === 'admin' ? '/admin' : '/dashboard') : '/login'}
+            to={user ? (['admin', 'superadmin'].includes(role as string) ? '/admin' : '/dashboard') : '/login'}
             style={{
               position: 'absolute',
               inset: 0,
@@ -396,6 +398,8 @@ function AppInner() {
           <Route path="/admin/schedule"  element={<UserLayout sidebarOpen={sidebarOpen} onCloseSidebar={closeSidebar}><AdminSchedule /></UserLayout>} />
           <Route path="/admin/requests"  element={<UserLayout sidebarOpen={sidebarOpen} onCloseSidebar={closeSidebar}><LocationRequests /></UserLayout>} />
           <Route path="/admin/settings"  element={<UserLayout sidebarOpen={sidebarOpen} onCloseSidebar={closeSidebar}><AdminSettings /></UserLayout>} />
+          <Route path="/admin/users"  element={<UserLayout sidebarOpen={sidebarOpen} onCloseSidebar={closeSidebar}><SuperAdminUserManagement /></UserLayout>} />
+          <Route path="/admin/admins"  element={<UserLayout sidebarOpen={sidebarOpen} onCloseSidebar={closeSidebar}><SuperAdminAdminManagement /></UserLayout>} />
         </Route>
       </Routes>
     </div>

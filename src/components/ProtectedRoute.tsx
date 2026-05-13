@@ -14,7 +14,7 @@ export const AdminRoute = () => {
   const { user, role, loading } = useAuth();
 
   if (loading) return <div className="app-container" style={{justifyContent: 'center', alignItems: 'center'}}>Loading...</div>;
-  if (!user || role !== 'admin') return <Navigate to="/" replace />;
+  if (!user || !['admin', 'superadmin'].includes(role as string)) return <Navigate to="/" replace />;
 
   return <Outlet />;
 };
