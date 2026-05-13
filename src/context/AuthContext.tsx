@@ -113,100 +113,126 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(firebaseUser);
         
         // Fetch or create user role in Firestore
-        try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            // If user exists but doesn't have name, update it with displayName
-            if (!data.name && firebaseUser.displayName) {
-              await setDoc(userDocRef, { name: firebaseUser.displayName }, { merge: true });
-            }
-            setRole(data.role as 'user' | 'admin' | 'superadmin');
-            setLocation(data.location || null);
-            setLocationChangeRequested(!!data.locationChangeRequested);
-          } else {
-            // Check if there's a pending user record for this email
-            const pendingQuery = query(collection(db, 'users'), where('email', '==', firebaseUser.email), where('pending', '==', true));
-            const pendingSnapshot = await getDocs(pendingQuery);
+          try {
+            console.log("AuthContext: Fetching user document for UID:", firebaseUser.uid);
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const userDoc = await getDoc(userDocRef);
+            console.log("AuthContext: User doc exists?", userDoc.exists());
             
-            let userRole = 'user';
-            let userLocation: string | null = null;
-            let userName: string | null = null;
-            
-            if (!pendingSnapshot.empty) {
-              // Use the first pending record
-              const pendingDoc = pendingSnapshot.docs[0];
-              const pendingData = pendingDoc.data();
-              userRole = pendingData.role || 'user';
-              userLocation = pendingData.location || null;
-              userName = pendingData.name || null;
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              console.log("AuthContext: User data:", data);
+              // If user exists but doesn't have name, update it with displayName
+              if (!data.name && firebaseUser.displayName) {
+                try {
+                  await setDoc(userDocRef, { name: firebaseUser.displayName }, { merge: true });
+                  console.log("AuthContext: Updated user name successfully");
+                } catch (err) {
+                  console.warn("AuthContext: Failed to update user name (permissions)", err);
+                }
+              }
+              setRole(data.role as 'user' | 'admin' | 'superadmin');
+              setLocation(data.location || null);
+              setLocationChangeRequested(!!data.locationChangeRequested);
+            } else {
+              // Check if there's a pending user record for this email
+              let userRole = 'user';
+              let userLocation: string | null = null;
+              let userName: string | null = null;
               
-              // Delete the pending record
-              await deleteDoc(doc(db, 'users', pendingDoc.id));
+              try {
+                const pendingQuery = query(collection(db, 'users'), where('email', '==', firebaseUser.email), where('pending', '==', true));
+                const pendingSnapshot = await getDocs(pendingQuery);
+                console.log("AuthContext: Pending records count:", pendingSnapshot.size);
+                
+                if (!pendingSnapshot.empty) {
+                  // Use the first pending record
+                  const pendingDoc = pendingSnapshot.docs[0];
+                  const pendingData = pendingDoc.data();
+                  userRole = pendingData.role || 'user';
+                  userLocation = pendingData.location || null;
+                  userName = pendingData.name || null;
+                  
+                  // Delete the pending record
+                  try {
+                    await deleteDoc(doc(db, 'users', pendingDoc.id));
+                    console.log("AuthContext: Deleted pending record");
+                  } catch (err) {
+                    console.warn("AuthContext: Failed to delete pending record (permissions)", err);
+                  }
+                }
+              } catch (err) {
+                console.warn("AuthContext: Failed to check pending records (permissions)", err);
+              }
+
+              // If no pending name, use Firebase Auth's display name
+              if (!userName) {
+                userName = firebaseUser.displayName || null;
+              }
+
+              // Create the user's permanent record using their UID
+              await setDoc(userDocRef, {
+                email: firebaseUser.email,
+                name: userName,
+                role: userRole,
+                location: userLocation,
+                createdAt: new Date().toISOString()
+              });
+              console.log("AuthContext: Created new user record");
+              
+              setRole(userRole as 'user' | 'admin' | 'superadmin');
+              setLocation(userLocation);
+              setLocationChangeRequested(false);
             }
 
-            // If no pending name, use Firebase Auth's display name
-            if (!userName) {
-              userName = firebaseUser.displayName || null;
+            // Subscribe to unread notifications (with error handler added earlier)
+            const q = query(collection(db, 'notifications'), where('uid', '==', firebaseUser.uid), where('read', '==', false));
+            const unsubNotifs = onSnapshot(q, (snapshot) => {
+              setUnreadNotifications(snapshot.size);
+            }, (err) => {
+              console.warn("AuthContext: Notifications snapshot error (likely permissions)", err);
+              setUnreadNotifications(0);
+            });
+            setNotificationUnsub(() => unsubNotifs);
+
+            // If admin or superadmin, subscribe to pending requests and incidents
+            const isAdminOrSuper = ['admin', 'superadmin'].includes(userDoc.exists() ? userDoc.data().role : 'user');
+            console.log("AuthContext: Is admin/super?", isAdminOrSuper);
+            if (isAdminOrSuper) {
+              // Subscribe to pending location change requests
+              const reqQ = query(collection(db, 'users'), where('locationChangeRequested', '==', true));
+              const unsubReqs = onSnapshot(reqQ, (snapshot) => {
+                setPendingLocationRequests(snapshot.size);
+              }, (err) => {
+                console.warn("AuthContext: Pending requests snapshot error", err);
+                setPendingLocationRequests(0);
+              });
+              setRequestsUnsub(() => unsubReqs);
+
+              // Subscribe to pending incidents (status is 'reported')
+              const incQ = query(collection(db, 'incidents'), where('status', '==', 'reported'));
+              const unsubInc = onSnapshot(incQ, (snapshot) => {
+                setPendingIncidents(snapshot.size);
+              }, (err) => {
+                console.warn("AuthContext: Incidents snapshot error", err);
+                setPendingIncidents(0);
+              });
+              setIncidentsUnsub(() => unsubInc);
             }
 
-            // Create the user's permanent record using their UID
-            await setDoc(userDocRef, {
-              email: firebaseUser.email,
-              name: userName,
-              role: userRole,
-              location: userLocation,
-              createdAt: new Date().toISOString()
-            });
-            
-            setRole(userRole as 'user' | 'admin' | 'superadmin');
-            setLocation(userLocation);
-            setLocationChangeRequested(false);
+            // Seed locations (only if admin or superadmin!)
+            try {
+              await seedLocations(isAdminOrSuper);
+              console.log("AuthContext: seedLocations complete");
+            } catch (err) {
+              console.warn("AuthContext: seedLocations failed (permissions)", err);
+            }
+          } catch (error: any) {
+            console.error("AuthContext: DETAILED error accessing user profile:", error);
+            console.error("AuthContext: Stack trace:", error.stack);
+            setRole('user');
+            setLocation(null);
           }
-
-          // Subscribe to unread notifications
-          const q = query(collection(db, 'notifications'), where('uid', '==', firebaseUser.uid), where('read', '==', false));
-          const unsubNotifs = onSnapshot(q, (snapshot) => {
-            setUnreadNotifications(snapshot.size);
-          }, (err) => {
-            console.warn("AuthContext: Notifications snapshot error (likely permissions)", err);
-            setUnreadNotifications(0);
-          });
-          setNotificationUnsub(() => unsubNotifs);
-
-          // If admin or superadmin, subscribe to pending requests and incidents
-          const isAdminOrSuper = ['admin', 'superadmin'].includes(userDoc.exists() ? userDoc.data().role : 'user');
-          if (isAdminOrSuper) {
-            // Subscribe to pending location change requests
-            const reqQ = query(collection(db, 'users'), where('locationChangeRequested', '==', true));
-            const unsubReqs = onSnapshot(reqQ, (snapshot) => {
-              setPendingLocationRequests(snapshot.size);
-            }, (err) => {
-              console.warn("AuthContext: Pending requests snapshot error", err);
-              setPendingLocationRequests(0);
-            });
-            setRequestsUnsub(() => unsubReqs);
-
-            // Subscribe to pending incidents (status is 'reported')
-            const incQ = query(collection(db, 'incidents'), where('status', '==', 'reported'));
-            const unsubInc = onSnapshot(incQ, (snapshot) => {
-              setPendingIncidents(snapshot.size);
-            }, (err) => {
-              console.warn("AuthContext: Incidents snapshot error", err);
-              setPendingIncidents(0);
-            });
-            setIncidentsUnsub(() => unsubInc);
-          }
-
-          // Seed locations (only if admin or superadmin!)
-          seedLocations(isAdminOrSuper);
-        } catch (error: any) {
-          console.error("AuthContext: Error accessing user profile:", error.message);
-          setRole('user');
-          setLocation(null);
-        }
       } else {
         setUser(null);
         setRole(null);
