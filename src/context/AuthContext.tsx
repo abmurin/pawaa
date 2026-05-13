@@ -119,6 +119,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (userDoc.exists()) {
             const data = userDoc.data();
+            // If user exists but doesn't have name, update it with displayName
+            if (!data.name && firebaseUser.displayName) {
+              await setDoc(userDocRef, { name: firebaseUser.displayName }, { merge: true });
+            }
             setRole(data.role as 'user' | 'admin' | 'superadmin');
             setLocation(data.location || null);
             setLocationChangeRequested(!!data.locationChangeRequested);
@@ -141,6 +145,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               
               // Delete the pending record
               await deleteDoc(doc(db, 'users', pendingDoc.id));
+            }
+
+            // If no pending name, use Firebase Auth's display name
+            if (!userName) {
+              userName = firebaseUser.displayName || null;
             }
 
             // Create the user's permanent record using their UID
