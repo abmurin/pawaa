@@ -1,8 +1,9 @@
 import { 
   collection, addDoc, updateDoc, doc, query, where, orderBy, 
-  onSnapshot, getDocs, writeBatch, serverTimestamp, getDoc 
+  onSnapshot, getDocs, writeBatch, serverTimestamp, getDoc, setDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { createUserWithPassword } from './firebase';
 
 export type UnifiedStatus = 'reported' | 'acknowledged' | 'in-progress' | 'resolved' | 'false-alarm';
 
@@ -487,6 +488,23 @@ export const createUserRecord = async (email: string, role: 'user' | 'admin' = '
     createdAt: serverTimestamp(),
     pending: true // Mark as pending until user signs up
   });
+};
+
+// Create a complete user account with password and Firestore record
+export const createUserAccount = async (email: string, password: string, role: 'user' | 'admin', name?: string, location?: string) => {
+  // First create the auth user
+  const user = await createUserWithPassword(email, password);
+  
+  // Then create the Firestore record using the user's UID
+  await setDoc(doc(db, 'users', user.uid), {
+    email,
+    name: name || null,
+    role,
+    location: location || null,
+    createdAt: serverTimestamp()
+  });
+  
+  return user;
 };
 
 export const checkActiveMaintenance = async (location: string) => {

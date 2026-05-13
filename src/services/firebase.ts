@@ -21,11 +21,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdefghij"
 };
 
-// Initialize Firebase
+// Initialize Firebase (main app for logged-in users)
 const app = initializeApp(firebaseConfig);
+// Initialize second app for user creation (doesn't affect current auth state)
+const appForUserCreation = initializeApp(firebaseConfig, 'userCreation');
 
 // Initialize Firebase services
 export const auth = getAuth(app);
+export const authForUserCreation = getAuth(appForUserCreation);
 export const db = getFirestore(app);
 
 // Authentication Helpers
@@ -75,6 +78,19 @@ export const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
   } catch (error) {
     console.error("Error resetting password", error);
+    throw error;
+  }
+};
+
+// Create user with password without affecting current logged-in user
+export const createUserWithPassword = async (email: string, password: string) => {
+  try {
+    const result = await createUserWithEmailAndPassword(authForUserCreation, email, password);
+    // Sign out the newly created user from the second auth instance
+    await signOut(authForUserCreation);
+    return result.user;
+  } catch (error) {
+    console.error("Error creating user with password", error);
     throw error;
   }
 };

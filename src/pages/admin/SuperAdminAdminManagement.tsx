@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserRecord } from '../../services/db';
+import { subscribeToAllUsers, type SystemUser, updateUserRole, createUserAccount } from '../../services/db';
 import { resetPassword } from '../../services/firebase';
 import { User, Shield, Key, XCircle, Plus, X } from 'lucide-react';
 
@@ -11,6 +11,7 @@ export const SuperAdminAdminManagement = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -54,21 +55,19 @@ export const SuperAdminAdminManagement = () => {
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAdminEmail) return;
+    if (!newAdminEmail || !newAdminPassword) return;
     
     setCreating(true);
     try {
-      await createUserRecord(newAdminEmail, 'admin', newAdminName);
-      if (confirm("Admin record created! Send password reset email now?")) {
-        await resetPassword(newAdminEmail);
-        alert("Password reset email sent!");
-      }
+      await createUserAccount(newAdminEmail, newAdminPassword, 'admin', newAdminName);
+      alert("Admin account created successfully!");
       setNewAdminEmail('');
       setNewAdminName('');
+      setNewAdminPassword('');
       setShowCreateForm(false);
     } catch (error) {
       console.error(error);
-      alert("Failed to create admin record.");
+      alert("Failed to create admin account.");
     } finally {
       setCreating(false);
     }
@@ -129,6 +128,18 @@ export const SuperAdminAdminManagement = () => {
                   onChange={e => setNewAdminEmail(e.target.value)}
                 />
               </div>
+              <div style={{ flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.25rem', display: 'block' }}>Password</label>
+                <input
+                  className="input-field"
+                  type="password"
+                  required
+                  placeholder="Set a password"
+                  value={newAdminPassword}
+                  onChange={e => setNewAdminPassword(e.target.value)}
+                  minLength={6}
+                />
+              </div>
               <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                 <button
                   type="submit"
@@ -144,6 +155,7 @@ export const SuperAdminAdminManagement = () => {
                     setShowCreateForm(false);
                     setNewAdminEmail('');
                     setNewAdminName('');
+                    setNewAdminPassword('');
                   }}
                   style={{ marginLeft: '0.5rem' }}
                 >
@@ -151,9 +163,6 @@ export const SuperAdminAdminManagement = () => {
                 </button>
               </div>
             </div>
-            <p style={{ fontSize: '0.75rem', opacity: 0.6, marginTop: '0.75rem', marginBottom: 0 }}>
-              Note: This creates an admin record in the system. The user will need to sign up using the "Sign In" page with this email to complete their account.
-            </p>
           </form>
         )}
       </div>
