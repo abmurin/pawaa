@@ -5,6 +5,10 @@ import { MapPin, Check } from 'lucide-react';
 
 export const LocationSelector = () => {
   const { user, role, location, updateUserLocation } = useAuth();
+  
+  // If no user, or already have location, or is admin/superadmin - don't show at all!
+  if (!user || location || role === 'admin' || role === 'superadmin') return null;
+  
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,8 +31,6 @@ export const LocationSelector = () => {
       setLoading(false);
     }
   };
-
-  if (loading || location || !user || role === 'admin') return null;
 
   return (
     <div style={{
