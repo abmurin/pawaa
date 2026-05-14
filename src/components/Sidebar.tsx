@@ -17,7 +17,7 @@ const userNavItems = [
 
 const adminNavItems = [
   { to: '/admin',            icon: LayoutDashboard, label: 'Admin Dashboard' },
-  { to: '/admin/incidents',  icon: AlertTriangle,   label: 'Incidents',       hasBadge: 'incidents' },
+  { to: '/admin/incidents',  icon: AlertTriangle,   label: 'Complaints',       hasBadge: 'incidents' },
   { to: '/admin/tickets',    icon: ClipboardList,   label: 'All Tickets'     },
   { to: '/admin/locations',  icon: MapPin,          label: 'Locations'       },
   { to: '/admin/schedule',   icon: Calendar,        label: 'Maintenance'     },
@@ -27,7 +27,7 @@ const adminNavItems = [
 
 const superAdminNavItems = [
   { to: '/admin',            icon: LayoutDashboard, label: 'Admin Dashboard' },
-  { to: '/admin/incidents',  icon: AlertTriangle,   label: 'Incidents',       hasBadge: 'incidents' },
+  { to: '/admin/incidents',  icon: AlertTriangle,   label: 'Complaints',       hasBadge: 'incidents' },
   { to: '/admin/tickets',    icon: ClipboardList,   label: 'All Tickets'     },
   { to: '/admin/locations',  icon: MapPin,          label: 'Locations'       },
   { to: '/admin/schedule',   icon: Calendar,        label: 'Maintenance'     },
